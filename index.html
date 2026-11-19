@@ -5,6 +5,9 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Misericordia</title>
         <link rel="stylesheet" href="style.css" />
+        <link rel="manifest" href="./manifest.json" />
+        <link rel="icon" type="image/png" href="./assets/choir-logo-2024.png" />
+        <meta name="theme-color" content="#1f2937" />
     </head>
     <body>
         <header>
@@ -24,5 +27,12 @@
 
         <script src="songs.js"></script>
         <script src="app.js"></script>
+        <script>
+            if ("serviceWorker" in navigator) {
+                window.addEventListener("load", () => {
+                    navigator.serviceWorker.register("./sw.js");
+                });
+            }
+        </script>
     </body>
 </html>
