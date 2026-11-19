@@ -1,6 +1,6 @@
 importScripts('./songs.js');
 
-const CACHE_NAME = 'misericordia-v0.1e';
+const CACHE_NAME = 'misericordia-v0.1f';
 
 const SONG_ASSETS = (typeof RAW_SONGS !== 'undefined' ? RAW_SONGS : []).flatMap(
   ([id, , , , , hasSheet = true]) => {
@@ -29,7 +29,20 @@ const ASSETS_TO_CACHE = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
+    caches.open(CACHE_NAME).then(async (cache) => {
+      for (const url of ASSETS_TO_CACHE) {
+        try {
+          const response = await fetch(url);
+          if (response.ok) {
+            await cache.put(url, response);
+          } else {
+            console.warn('Skipped precaching (status not OK):', url, response.status);
+          }
+        } catch (err) {
+          console.warn('Skipped precaching (fetch failed):', url, err);
+        }
+      }
+    })
   );
   self.skipWaiting();
 });
