@@ -19,7 +19,7 @@ const RAW_SONGS = [
   ["ave-maria", "Ave Maria", [], ["Ordinary Time"], ["Latin"], true]
 ];
 
-const mappedSongs = RAW_SONGS.map(
+globalThis.songs = RAW_SONGS.map(
   ([id, title, massPart = [], seasons = [], language = [], hasSheet = true]) => ({
     id,
     title,
@@ -30,7 +30,3 @@ const mappedSongs = RAW_SONGS.map(
     sheetMusicFile: hasSheet ? `assets/sheets/${id}.html` : null
   })
 );
-
-if (typeof window !== 'undefined') {
-  window.songs = mappedSongs;
-}
