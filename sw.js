@@ -1,22 +1,16 @@
 importScripts('./songs.js');
 
-const CACHE_NAME = 'misericordia-v0.3';
+const CACHE_NAME = 'misericordia-v0.1d';
 
-const mappedSongs = RAW_SONGS.map(
-  ([id, title, massPart = [], seasons = [], language = [], hasSheet = true]) => ({
-    id,
-    title,
-    massPart,
-    seasons,
-    language,
-    lyricsFile: `assets/lyrics/${id}.html`,
-    sheetMusicFile: hasSheet ? `assets/sheets/${id}.html` : null
-  })
+const SONG_ASSETS = (typeof RAW_SONGS !== 'undefined' ? RAW_SONGS : []).flatMap(
+  ([id, , , , , hasSheet = true]) => {
+    const files = [`./assets/lyrics/${id}.html`];
+    if (hasSheet) {
+      files.push(`./assets/sheets/${id}.html`);
+    }
+    return files;
+  }
 );
-
-if (typeof window !== 'undefined') {
-  window.songs = mappedSongs;
-}
 
 const ASSETS_TO_CACHE = [
   './',
