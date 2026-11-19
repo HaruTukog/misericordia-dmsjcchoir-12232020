@@ -1,6 +1,6 @@
 importScripts('./songs.js');
 
-const CACHE_NAME = 'misericordia-v0.1d';
+const CACHE_NAME = 'misericordia-v0.1e';
 
 const SONG_ASSETS = (typeof RAW_SONGS !== 'undefined' ? RAW_SONGS : []).flatMap(
   ([id, , , , , hasSheet = true]) => {
