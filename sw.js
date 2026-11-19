@@ -1,6 +1,6 @@
 importScripts('./songs.js');
 
-const CACHE_NAME = 'misericordia-v2';
+const CACHE_NAME = 'misericordia-v0.3';
 
 const mappedSongs = RAW_SONGS.map(
   ([id, title, massPart = [], seasons = [], language = [], hasSheet = true]) => ({
