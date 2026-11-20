@@ -1,4 +1,4 @@
-const APP_VERSION = "v0.3a"; // Update this to match your CACHE_NUMBER / sw.js version
+const APP_VERSION = "v0.3b"; // Update this to match your CACHE_NUMBER / sw.js version
 
 const LANGUAGE_CATEGORIES = [
   "English",
@@ -15,6 +15,8 @@ const MASS_CATEGORIES = [
   "Gospel Acclamation",
   "Offertory",
   "Sanctus",
+  "Mysterium Fidei",
+  "Pater Noster",
   "Agnus Dei",
   "Communion",
   "Recessional"
@@ -212,6 +214,62 @@ if (!stickyHeaderEl) {
   libraryViewEl.insertBefore(stickyHeaderEl, songListEl);
 }
 
+/* --- Horizontal Drag-to-Scroll for Main & Sub-Filter Strips --- */
+function enableHorizontalDragScroll(rowEl) {
+  if (!rowEl || rowEl.dataset.dragScrollBound === "true") return;
+  rowEl.dataset.dragScrollBound = "true";
+
+  let isDown = false;
+  let startX = 0;
+  let startScrollLeft = 0;
+  let hasDragged = false;
+
+  rowEl.addEventListener("mousedown", (e) => {
+    if (e.button !== 0) return;
+    isDown = true;
+    hasDragged = false;
+    startX = e.pageX - rowEl.offsetLeft;
+    startScrollLeft = rowEl.scrollLeft;
+    rowEl.classList.add("is-dragging");
+  });
+
+  window.addEventListener("mousemove", (e) => {
+    if (!isDown) return;
+    const x = e.pageX - rowEl.offsetLeft;
+    const walk = x - startX;
+    if (Math.abs(walk) > 5) {
+      hasDragged = true;
+    }
+    if (hasDragged) {
+      e.preventDefault();
+      rowEl.scrollLeft = startScrollLeft - walk * 1.2;
+    }
+  });
+
+  window.addEventListener("mouseup", () => {
+    if (!isDown) return;
+    isDown = false;
+    rowEl.classList.remove("is-dragging");
+    setTimeout(() => {
+      hasDragged = false;
+    }, 0);
+  });
+
+  rowEl.addEventListener(
+    "click",
+    (e) => {
+      if (hasDragged) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    },
+    true
+  );
+}
+
+enableHorizontalDragScroll(mainFiltersEl);
+enableHorizontalDragScroll(subFiltersEl);
+
 function renderVersionBadge() {
   const titleRowEl = document.querySelector(".title-row");
   if (!titleRowEl) return;
@@ -384,6 +442,7 @@ refreshCacheBtnEl?.addEventListener("click", forceRefreshCache);
 
 /* --- Library & Reader Logic --- */
 function renderMainFilters() {
+  const prevScrollLeft = mainFiltersEl.scrollLeft;
   mainFiltersEl.innerHTML = "";
 
   const topButtons = [
@@ -402,6 +461,7 @@ function renderMainFilters() {
     }
 
     btn.addEventListener("click", () => {
+      const groupChanged = activeGroup !== btnInfo.group;
       activeGroup = btnInfo.group;
       resetClearFavoritesConfirmation();
 
@@ -409,7 +469,7 @@ function renderMainFilters() {
         appliedFilterGroup = null;
         appliedSubCategory = null;
         renderMainFilters();
-        renderSubFilters();
+        renderSubFilters({ resetScroll: groupChanged });
         renderFavoritesActions();
         renderSongs();
         syncHeaderHeight();
@@ -420,7 +480,7 @@ function renderMainFilters() {
         appliedFilterGroup = "favorites";
         appliedSubCategory = null;
         renderMainFilters();
-        renderSubFilters();
+        renderSubFilters({ resetScroll: groupChanged });
         renderFavoritesActions();
         renderSongs();
         syncHeaderHeight();
@@ -432,7 +492,7 @@ function renderMainFilters() {
       }
 
       renderMainFilters();
-      renderSubFilters();
+      renderSubFilters({ resetScroll: groupChanged });
       renderFavoritesActions();
       renderSongs();
       syncHeaderHeight();
@@ -440,17 +500,23 @@ function renderMainFilters() {
 
     mainFiltersEl.appendChild(btn);
   });
+
+  mainFiltersEl.scrollLeft = prevScrollLeft;
 }
 
-function renderSubFilters() {
-  subFiltersEl.innerHTML = "";
+function renderSubFilters(options = {}) {
+  const { resetScroll = false } = options;
+  const prevScrollLeft = resetScroll ? 0 : subFiltersEl.scrollLeft;
 
   if (activeGroup === "favorites") {
+    subFiltersEl.innerHTML = "";
     subFiltersEl.style.display = "none";
+    subFiltersEl.scrollLeft = 0;
     return;
   }
 
   subFiltersEl.style.display = "flex";
+  subFiltersEl.innerHTML = "";
 
   let items = LANGUAGE_CATEGORIES;
   if (activeGroup === "mass") {
@@ -479,7 +545,8 @@ function renderSubFilters() {
         appliedFilterGroup = activeGroup;
         appliedSubCategory = categoryName;
       }
-      renderSubFilters();
+
+      renderSubFilters({ resetScroll: false });
       renderFavoritesActions();
       renderSongs();
       syncHeaderHeight();
@@ -487,6 +554,15 @@ function renderSubFilters() {
 
     subFiltersEl.appendChild(btn);
   });
+
+  if (!resetScroll) {
+    subFiltersEl.scrollLeft = prevScrollLeft;
+    requestAnimationFrame(() => {
+      subFiltersEl.scrollLeft = prevScrollLeft;
+    });
+  } else {
+    subFiltersEl.scrollLeft = 0;
+  }
 }
 
 function renderFavoritesActions() {
@@ -737,7 +813,7 @@ initPreferences();
 renderVersionBadge();
 updateClearSearchButton();
 renderMainFilters();
-renderSubFilters();
+renderSubFilters({ resetScroll: true });
 renderFavoritesActions();
 renderSongs();
 syncHeaderHeight();

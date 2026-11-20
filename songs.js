@@ -54,7 +54,13 @@ const RAW_SONGS = [
   ["sanctus-vil-8th", "Sanctus – 8th Mass", ["Sanctus"], [], ["Cebuano"], false],
   ["sanctus-vil-9th", "Sanctus – 9th Mass", ["Sanctus"], [], ["Cebuano"], false],
   ["sanctus-vil-10th", "Sanctus – 10th Mass", ["Sanctus"], [], ["Cebuano"], false],
-  ["sanctus-vil-11th", "Sanctus – 11th Mass (Pastorela)", ["Sanctus"], ["Christmas"], ["Cebuano"], false]
+  ["sanctus-vil-11th", "Sanctus – 11th Mass (Pastorela)", ["Sanctus"], ["Christmas"], ["Cebuano"], false],
+  ["mysfid-figuracion1", "Mysterium Fidei (Misa Figuracion 1)", ["Mysterium Fidei"], [], ["English"], false],
+  ["when-we-eat", "When We Eat This Bread", ["Mysterium Fidei"], [], ["English"], false],
+  ["mysfid-figuracion2", "Mysterium Fidei (Misa Figuracion 2)", ["Mysterium Fidei"], [], ["Cebuano"], false],
+  ["pinaagi-sa-krus", "Pinaagi sa Krus", ["Mysterium Fidei"], [], ["Cebuano"], false],
+  ["si-kristo-namatay-trad", "Si Kristo Namatay (Traditional)", ["Mysterium Fidei"], [], ["Cebuano"], false],
+  ["si-kristo-namatay-vil", "Si Kristo Namatay (Villanueva)", ["Mysterium Fidei"], [], ["Cebuano"], false]
 ];
 
 globalThis.songs = RAW_SONGS.map(

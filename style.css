@@ -208,18 +208,45 @@ h1 {
     background: var(--bg-app);
 }
 
-#main-filters {
+/* Single-line horizontal scroll for main and all sub-filter rows */
+#main-filters,
+#sub-filters {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    align-items: center;
     gap: 8px;
-    margin-bottom: 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-width: 100%;
+    min-width: 0;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    cursor: grab;
+    user-select: none;
+}
+
+#main-filters::-webkit-scrollbar,
+#sub-filters::-webkit-scrollbar {
+    display: none;
+}
+
+#main-filters.is-dragging,
+#sub-filters.is-dragging {
+    cursor: grabbing;
+}
+
+#main-filters {
+    margin-bottom: 10px;
 }
 
 #sub-filters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
+}
+
+#main-filters > button,
+#sub-filters > button {
+    flex: 0 0 auto;
+    white-space: nowrap;
 }
 
 .favorites-actions {

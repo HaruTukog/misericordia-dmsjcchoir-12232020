@@ -8,6 +8,35 @@
         <link rel="manifest" href="./manifest.json" />
         <link rel="icon" type="image/png" href="./assets/choir-logo-2024.png" />
         <meta name="theme-color" content="#1f2937" />
+        <style>
+            .filter-scroll-row {
+                display: flex;
+                flex-wrap: nowrap;
+                align-items: center;
+                gap: 8px;
+                overflow-x: auto;
+                overflow-y: hidden;
+                max-width: 100%;
+                min-width: 0;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                cursor: grab;
+                user-select: none;
+            }
+
+            .filter-scroll-row::-webkit-scrollbar {
+                display: none;
+            }
+
+            .filter-scroll-row.is-dragging {
+                cursor: grabbing;
+            }
+
+            .filter-scroll-row > button {
+                flex: 0 0 auto;
+                white-space: nowrap;
+            }
+        </style>
     </head>
     <body>
         <header>
@@ -31,8 +60,8 @@
                 <button id="clear-search-btn" class="clear-search-btn" type="button" aria-label="Clear search" hidden>&times;</button>
             </div>
 
-            <div id="main-filters"></div>
-            <div id="sub-filters"></div>
+            <div id="main-filters" class="filter-scroll-row" role="group" aria-label="Main filters"></div>
+            <div id="sub-filters" class="filter-scroll-row" role="group" aria-label="Sub filters"></div>
         </header>
 
         <main>
@@ -76,6 +105,67 @@
         <script src="songs.js"></script>
         <script src="app.js"></script>
         <script>
+            (() => {
+                const rows = document.querySelectorAll(".filter-scroll-row");
+                rows.forEach((row) => {
+                    let isDown = false;
+                    let startX = 0;
+                    let startScrollLeft = 0;
+                    let hasDragged = false;
+
+                    row.addEventListener("mousedown", (e) => {
+                        if (e.button !== 0) return;
+                        isDown = true;
+                        hasDragged = false;
+                        startX = e.pageX - row.offsetLeft;
+                        startScrollLeft = row.scrollLeft;
+                        row.classList.add("is-dragging");
+                    });
+
+                    window.addEventListener("mousemove", (e) => {
+                        if (!isDown) return;
+                        const x = e.pageX - row.offsetLeft;
+                        const delta = x - startX;
+                        if (Math.abs(delta) > 5) {
+                            hasDragged = true;
+                        }
+                        if (hasDragged) {
+                            e.preventDefault();
+                            row.scrollLeft = startScrollLeft - delta * 1.2;
+                        }
+                    });
+
+                    window.addEventListener("mouseup", () => {
+                        if (!isDown) return;
+                        isDown = false;
+                        row.classList.remove("is-dragging");
+                        setTimeout(() => {
+                            hasDragged = false;
+                        }, 0);
+                    });
+
+                    row.addEventListener(
+                        "click",
+                        (e) => {
+                            if (hasDragged) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                            }
+                        },
+                        true
+                    );
+                });
+
+                // Reset sub-filter scroll position whenever its buttons change
+                const subFilters = document.getElementById("sub-filters");
+                if (subFilters) {
+                    const observer = new MutationObserver(() => {
+                        subFilters.scrollLeft = 0;
+                    });
+                    observer.observe(subFilters, { childList: true });
+                }
+            })();
+
             if ("serviceWorker" in navigator) {
                 window.addEventListener("load", () => {
                     navigator.serviceWorker.register("./sw.js");
