@@ -1,3 +1,5 @@
+const APP_VERSION = "v0.2a"; // Update this to match your CACHE_NUMBER / sw.js version
+
 const LANGUAGE_CATEGORIES = [
   "English",
   "Tagalog",
@@ -81,6 +83,65 @@ if (!libraryViewEl) {
   libraryViewEl.appendChild(subFiltersEl);
   libraryViewEl.appendChild(songListEl);
 }
+libraryViewEl.style.display = "block";
+
+// Wrap header, search, and filters in #sticky-header so they stay pinned while scrolling
+let stickyHeaderEl = document.getElementById("sticky-header");
+if (!stickyHeaderEl) {
+  stickyHeaderEl = document.createElement("div");
+  stickyHeaderEl.id = "sticky-header";
+
+  const titleRowEl = libraryViewEl.querySelector(".title-row");
+  if (titleRowEl) {
+    stickyHeaderEl.appendChild(titleRowEl);
+  }
+  stickyHeaderEl.appendChild(searchInput);
+  stickyHeaderEl.appendChild(mainFiltersEl);
+  stickyHeaderEl.appendChild(subFiltersEl);
+
+  libraryViewEl.insertBefore(stickyHeaderEl, songListEl);
+}
+
+function renderVersionBadge() {
+  const titleRowEl = document.querySelector(".title-row");
+  if (!titleRowEl) return;
+
+  const h1El = titleRowEl.querySelector("h1");
+  let titleGroupEl = titleRowEl.querySelector(".title-group");
+
+  if (!titleGroupEl) {
+    titleGroupEl = document.createElement("div");
+    titleGroupEl.className = "title-group";
+    if (h1El) {
+      h1El.replaceWith(titleGroupEl);
+      titleGroupEl.appendChild(h1El);
+    } else {
+      titleRowEl.appendChild(titleGroupEl);
+    }
+  }
+
+  let badgeEl = document.getElementById("app-version");
+  if (!badgeEl) {
+    badgeEl = document.createElement("span");
+    badgeEl.id = "app-version";
+    badgeEl.className = "version-badge";
+    titleGroupEl.appendChild(badgeEl);
+  }
+  badgeEl.textContent = APP_VERSION;
+}
+
+function syncHeaderHeight() {
+  if (stickyHeaderEl) {
+    const h = Math.ceil(stickyHeaderEl.getBoundingClientRect().height);
+    document.documentElement.style.setProperty("--header-h", `${h}px`);
+  }
+}
+
+if (typeof ResizeObserver !== "undefined" && stickyHeaderEl) {
+  const headerObserver = new ResizeObserver(syncHeaderHeight);
+  headerObserver.observe(stickyHeaderEl);
+}
+window.addEventListener("resize", syncHeaderHeight);
 
 function renderMainFilters() {
   mainFiltersEl.innerHTML = "";
@@ -110,11 +171,13 @@ function renderMainFilters() {
         renderMainFilters();
         renderSubFilters();
         renderSongs();
+        syncHeaderHeight();
         return;
       }
 
       renderMainFilters();
       renderSubFilters();
+      syncHeaderHeight();
     });
 
     mainFiltersEl.appendChild(btn);
@@ -153,6 +216,7 @@ function renderSubFilters() {
       }
       renderSubFilters();
       renderSongs();
+      syncHeaderHeight();
     });
 
     subFiltersEl.appendChild(btn);
@@ -188,13 +252,18 @@ function matchesFilter(song) {
   return true;
 }
 
+function compareSongTitlesNaturally(a, b) {
+  return a.title.trim().localeCompare(b.title.trim(), undefined, {
+    sensitivity: "base",
+    numeric: true
+  });
+}
+
 function renderSongs() {
   songListEl.innerHTML = "";
   const filtered = songCatalog.filter(matchesFilter);
 
-  filtered.sort((a, b) =>
-    a.title.trim().localeCompare(b.title.trim(), undefined, { sensitivity: "base" })
-  );
+  filtered.sort(compareSongTitlesNaturally);
 
   if (filtered.length === 0) {
     songListEl.innerHTML = `<li class="song-card">No matching songs found.</li>`;
@@ -249,13 +318,16 @@ function escapeHtml(str) {
 function showLibraryView() {
   songViewerEl.style.display = "none";
   songViewerEl.innerHTML = "";
+  document.body.style.overflow = "hidden";
   libraryViewEl.style.display = "block";
-  window.scrollTo({ top: 0, behavior: "instant" });
+  songListEl.scrollTop = 0;
+  syncHeaderHeight();
 }
 
 function openSong(song) {
   libraryViewEl.style.display = "none";
   songViewerEl.style.display = "block";
+  document.body.style.overflow = "auto";
   window.scrollTo({ top: 0, behavior: "instant" });
 
   songViewerEl.innerHTML = `
@@ -302,6 +374,8 @@ searchInput.addEventListener("input", (e) => {
 });
 
 // Initial render
+renderVersionBadge();
 renderMainFilters();
 renderSubFilters();
 renderSongs();
+syncHeaderHeight();

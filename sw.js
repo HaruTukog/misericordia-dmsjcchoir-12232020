@@ -1,6 +1,10 @@
 importScripts('./songs.js');
 
-const CACHE_NAME = 'misericordia-v0.1g';
+const CACHE_NAME = 'misericordia-v0.2a';
+
+const IS_LOCAL_DEV =
+  self.location.hostname === '127.0.0.1' ||
+  self.location.hostname === 'localhost';
 
 const SONG_ASSETS = (typeof RAW_SONGS !== 'undefined' ? RAW_SONGS : []).flatMap(
   ([id, , , , , hasSheet = true]) => {
@@ -60,29 +64,72 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+async function cacheFirst(request) {
+  const cached = await caches.match(request, { ignoreSearch: true });
+  if (cached) return cached;
+
+  try {
+    const response = await fetch(request);
+    if (response && response.status === 200 && response.type === 'basic') {
+      const copy = response.clone();
+      const cache = await caches.open(CACHE_NAME);
+      await cache.put(request, copy);
+    }
+    return response;
+  } catch (err) {
+    return new Response('Offline — this content is not cached yet.', {
+      status: 503,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+    });
+  }
+}
+
+async function networkFirst(request) {
+  try {
+    const fetchRequest = IS_LOCAL_DEV
+      ? new Request(request, { cache: 'no-store' })
+      : request;
+    const response = await fetch(fetchRequest);
+
+    if (response && response.status === 200 && response.type === 'basic') {
+      const copy = response.clone();
+      const cache = await caches.open(CACHE_NAME);
+      await cache.put(request, copy);
+    }
+    return response;
+  } catch (err) {
+    const cached = await caches.match(request, { ignoreSearch: true });
+    if (cached) return cached;
+
+    return new Response('Offline — this content is not cached yet.', {
+      status: 503,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+    });
+  }
+}
+
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
-  event.respondWith(
-    caches.match(event.request, { ignoreSearch: true }).then((cached) => {
-      if (cached) return cached;
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
 
-      return fetch(event.request)
-        .then((response) => {
-          if (
-            response &&
-            response.status === 200 &&
-            response.type === 'basic'
-          ) {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-          }
-          return response;
-        })
-        .catch(() => new Response('Offline — this content is not cached yet.', {
-          status: 503,
-          headers: { 'Content-Type': 'text/plain; charset=utf-8' }
-        }));
-    })
-  );
+  // In local dev (Live Server), always try network first so edits appear immediately,
+  // and fall back to cache when offline.
+  if (IS_LOCAL_DEV) {
+    event.respondWith(networkFirst(event.request));
+    return;
+  }
+
+  // In production, use network-first for navigation/HTML/JS/CSS so updates land cleanly,
+  // and cache-first for static assets (lyrics, sheets, fonts, images).
+  const isCodeOrDoc =
+    event.request.mode === 'navigate' ||
+    /\.(?:html|js|css|json)$/i.test(url.pathname);
+
+  if (isCodeOrDoc) {
+    event.respondWith(networkFirst(event.request));
+  } else {
+    event.respondWith(cacheFirst(event.request));
+  }
 });
