@@ -1,4 +1,4 @@
-const APP_VERSION = "v0.2a"; // Update this to match your CACHE_NUMBER / sw.js version
+const APP_VERSION = "v0.3a"; // Update this to match your CACHE_NUMBER / sw.js version
 
 const LANGUAGE_CATEGORIES = [
   "English",
@@ -29,35 +29,135 @@ const SEASON_CATEGORIES = [
   "Specials"
 ];
 
+const STORAGE_KEYS = {
+  darkMode: "misericordia_dark_mode",
+  fontSize: "misericordia_font_size",
+  favorites: "misericordia_favorites"
+};
+
 const songCatalog = Array.isArray(window.songs)
   ? window.songs
   : typeof songs !== "undefined"
     ? songs
     : [];
 
-let activeGroup = "all"; // "all" | "mass" | "season" (controls which sub-filter bar is visible)
-let appliedFilterGroup = null; // null | "all" | "mass" | "season" (controls which sub-filter is actively filtering)
+let activeGroup = "all"; // "all" | "mass" | "season" | "favorites"
+let appliedFilterGroup = null; // null | "all" | "mass" | "season" | "favorites"
 let appliedSubCategory = null;
 let searchQuery = "";
+let favoriteTitles = loadFavorites();
+let confirmClearFavorites = false;
+let confirmClearTimeoutId = null;
+
+function loadFavorites() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.favorites);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter((title) => typeof title === "string") : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function saveFavorites() {
+  try {
+    localStorage.setItem(STORAGE_KEYS.favorites, JSON.stringify(favoriteTitles));
+  } catch (_) {
+    // Ignore storage errors in restricted browsing modes
+  }
+}
+
+function resetClearFavoritesConfirmation() {
+  confirmClearFavorites = false;
+  if (confirmClearTimeoutId) {
+    clearTimeout(confirmClearTimeoutId);
+    confirmClearTimeoutId = null;
+  }
+}
+
+function isFavoriteSong(songTitle) {
+  return favoriteTitles.includes(songTitle);
+}
+
+function toggleFavoriteSong(songTitle) {
+  if (isFavoriteSong(songTitle)) {
+    favoriteTitles = favoriteTitles.filter((title) => title !== songTitle);
+  } else {
+    favoriteTitles.push(songTitle);
+  }
+  resetClearFavoritesConfirmation();
+  saveFavorites();
+}
+
+function clearAllFavorites() {
+  favoriteTitles = [];
+  resetClearFavoritesConfirmation();
+  saveFavorites();
+}
 
 const searchInput = document.getElementById("search-input");
 const songListEl = document.getElementById("song-list");
 
+// Search wrapper & clear button setup
+let searchWrapperEl = searchInput?.closest(".search-wrapper") || null;
+let clearSearchBtnEl = document.getElementById("clear-search-btn");
+
+if (searchInput && !searchWrapperEl) {
+  searchWrapperEl = document.createElement("div");
+  searchWrapperEl.className = "search-wrapper";
+  searchInput.insertAdjacentElement("beforebegin", searchWrapperEl);
+  searchWrapperEl.appendChild(searchInput);
+}
+
+if (searchInput && searchWrapperEl && !clearSearchBtnEl) {
+  clearSearchBtnEl = document.createElement("button");
+  clearSearchBtnEl.type = "button";
+  clearSearchBtnEl.id = "clear-search-btn";
+  clearSearchBtnEl.className = "clear-search-btn";
+  clearSearchBtnEl.setAttribute("aria-label", "Clear search");
+  clearSearchBtnEl.hidden = true;
+  clearSearchBtnEl.innerHTML = "&times;";
+  searchWrapperEl.appendChild(clearSearchBtnEl);
+}
+
+function updateClearSearchButton() {
+  if (!clearSearchBtnEl || !searchInput) return;
+  clearSearchBtnEl.hidden = searchInput.value.length === 0;
+}
+
+// Drawer & settings elements
+const menuBtn = document.getElementById("menu-btn");
+const closeDrawerBtn = document.getElementById("close-drawer-btn");
+const sideDrawerEl = document.getElementById("side-drawer");
+const drawerBackdropEl = document.getElementById("drawer-backdrop");
+const darkModeToggleEl = document.getElementById("dark-mode-toggle");
+const fontSizeSelectEl = document.getElementById("font-size-select");
+const refreshCacheBtnEl = document.getElementById("refresh-cache-btn");
+
 // Create containers dynamically if they aren't in index.html yet
 let mainFiltersEl = document.getElementById("main-filters");
 let subFiltersEl = document.getElementById("sub-filters");
+let favoritesActionsEl = document.getElementById("favorites-actions");
 let songViewerEl = document.getElementById("song-viewer");
 
 if (!mainFiltersEl) {
   mainFiltersEl = document.createElement("div");
   mainFiltersEl.id = "main-filters";
-  searchInput.insertAdjacentElement("afterend", mainFiltersEl);
+  (searchWrapperEl || searchInput).insertAdjacentElement("afterend", mainFiltersEl);
 }
 
 if (!subFiltersEl) {
   subFiltersEl = document.createElement("div");
   subFiltersEl.id = "sub-filters";
   mainFiltersEl.insertAdjacentElement("afterend", subFiltersEl);
+}
+
+if (!favoritesActionsEl) {
+  favoritesActionsEl = document.createElement("div");
+  favoritesActionsEl.id = "favorites-actions";
+  favoritesActionsEl.className = "favorites-actions";
+  favoritesActionsEl.style.display = "none";
+  subFiltersEl.insertAdjacentElement("afterend", favoritesActionsEl);
 }
 
 if (!songViewerEl) {
@@ -78,9 +178,14 @@ if (!libraryViewEl) {
     titleRowEl.parentNode.insertBefore(libraryViewEl, titleRowEl);
     libraryViewEl.appendChild(titleRowEl);
   }
-  libraryViewEl.appendChild(searchInput);
+  if (searchWrapperEl) {
+    libraryViewEl.appendChild(searchWrapperEl);
+  } else if (searchInput) {
+    libraryViewEl.appendChild(searchInput);
+  }
   libraryViewEl.appendChild(mainFiltersEl);
   libraryViewEl.appendChild(subFiltersEl);
+  libraryViewEl.appendChild(favoritesActionsEl);
   libraryViewEl.appendChild(songListEl);
 }
 libraryViewEl.style.display = "block";
@@ -95,9 +200,14 @@ if (!stickyHeaderEl) {
   if (titleRowEl) {
     stickyHeaderEl.appendChild(titleRowEl);
   }
-  stickyHeaderEl.appendChild(searchInput);
+  if (searchWrapperEl) {
+    stickyHeaderEl.appendChild(searchWrapperEl);
+  } else if (searchInput) {
+    stickyHeaderEl.appendChild(searchInput);
+  }
   stickyHeaderEl.appendChild(mainFiltersEl);
   stickyHeaderEl.appendChild(subFiltersEl);
+  stickyHeaderEl.appendChild(favoritesActionsEl);
 
   libraryViewEl.insertBefore(stickyHeaderEl, songListEl);
 }
@@ -128,6 +238,11 @@ function renderVersionBadge() {
     titleGroupEl.appendChild(badgeEl);
   }
   badgeEl.textContent = APP_VERSION;
+
+  const drawerMetaEl = sideDrawerEl?.querySelector(".drawer-meta");
+  if (drawerMetaEl) {
+    drawerMetaEl.textContent = `Offline Choir Library • ${APP_VERSION}`;
+  }
 }
 
 function syncHeaderHeight() {
@@ -143,40 +258,183 @@ if (typeof ResizeObserver !== "undefined" && stickyHeaderEl) {
 }
 window.addEventListener("resize", syncHeaderHeight);
 
+/* --- Side Drawer & Settings --- */
+let backdropHideTimer = null;
+
+function setDrawerOpen(isOpen) {
+  if (!sideDrawerEl || !drawerBackdropEl) return;
+
+  if (backdropHideTimer) {
+    clearTimeout(backdropHideTimer);
+    backdropHideTimer = null;
+  }
+
+  if (isOpen) {
+    drawerBackdropEl.hidden = false;
+    requestAnimationFrame(() => {
+      drawerBackdropEl.classList.add("is-open");
+      sideDrawerEl.classList.add("is-open");
+    });
+    sideDrawerEl.setAttribute("aria-hidden", "false");
+    menuBtn?.setAttribute("aria-expanded", "true");
+    closeDrawerBtn?.focus();
+  } else {
+    sideDrawerEl.classList.remove("is-open");
+    drawerBackdropEl.classList.remove("is-open");
+    sideDrawerEl.setAttribute("aria-hidden", "true");
+    menuBtn?.setAttribute("aria-expanded", "false");
+    backdropHideTimer = setTimeout(() => {
+      drawerBackdropEl.hidden = true;
+    }, 250);
+    menuBtn?.focus();
+  }
+}
+
+function applyDarkMode(enabled) {
+  document.body.classList.toggle("dark-mode", Boolean(enabled));
+  if (darkModeToggleEl) {
+    darkModeToggleEl.checked = Boolean(enabled);
+  }
+  try {
+    localStorage.setItem(STORAGE_KEYS.darkMode, enabled ? "1" : "0");
+  } catch (_) {
+    // Ignore storage errors in restricted browsing modes
+  }
+}
+
+function applyFontSize(size) {
+  const validSizes = ["normal", "large", "xlarge"];
+  const normalized = validSizes.includes(size) ? size : "normal";
+
+  document.body.classList.remove("font-large", "font-xlarge");
+  if (normalized === "large") {
+    document.body.classList.add("font-large");
+  } else if (normalized === "xlarge") {
+    document.body.classList.add("font-xlarge");
+  }
+
+  if (fontSizeSelectEl) {
+    fontSizeSelectEl.value = normalized;
+  }
+
+  try {
+    localStorage.setItem(STORAGE_KEYS.fontSize, normalized);
+  } catch (_) {
+    // Ignore storage errors in restricted browsing modes
+  }
+}
+
+function initPreferences() {
+  let savedDark = false;
+  let savedFont = "normal";
+
+  try {
+    savedDark = localStorage.getItem(STORAGE_KEYS.darkMode) === "1";
+    savedFont = localStorage.getItem(STORAGE_KEYS.fontSize) || "normal";
+  } catch (_) {
+    // Fallback to defaults if storage is unavailable
+  }
+
+  applyDarkMode(savedDark);
+  applyFontSize(savedFont);
+}
+
+async function forceRefreshCache() {
+  if (refreshCacheBtnEl) {
+    refreshCacheBtnEl.disabled = true;
+    refreshCacheBtnEl.textContent = "Refreshing...";
+  }
+
+  try {
+    if ("caches" in window) {
+      const cacheKeys = await caches.keys();
+      await Promise.all(cacheKeys.map((key) => caches.delete(key)));
+    }
+
+    if ("serviceWorker" in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((reg) => reg.unregister()));
+    }
+  } catch (_) {
+    // Still attempt a clean reload even if cache/SW cleanup encounters an error
+  }
+
+  window.location.reload();
+}
+
+menuBtn?.addEventListener("click", () => setDrawerOpen(true));
+closeDrawerBtn?.addEventListener("click", () => setDrawerOpen(false));
+drawerBackdropEl?.addEventListener("click", () => setDrawerOpen(false));
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && sideDrawerEl?.classList.contains("is-open")) {
+    setDrawerOpen(false);
+  }
+});
+
+darkModeToggleEl?.addEventListener("change", (e) => {
+  applyDarkMode(e.target.checked);
+});
+
+fontSizeSelectEl?.addEventListener("change", (e) => {
+  applyFontSize(e.target.value);
+});
+
+refreshCacheBtnEl?.addEventListener("click", forceRefreshCache);
+
+/* --- Library & Reader Logic --- */
 function renderMainFilters() {
   mainFiltersEl.innerHTML = "";
 
   const topButtons = [
     { label: "All", group: "all" },
     { label: "Order of the Mass", group: "mass" },
-    { label: "Liturgical Seasons", group: "season" }
+    { label: "Liturgical Seasons", group: "season" },
+    { label: "Favorites", group: "favorites" }
   ];
 
   topButtons.forEach((btnInfo) => {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.textContent = btnInfo.label;
-    if (activeGroup === btnInfo.group) {
+    if (activeGroup === btnInfo.group || appliedFilterGroup === btnInfo.group) {
       btn.classList.add("active");
     }
 
     btn.addEventListener("click", () => {
       activeGroup = btnInfo.group;
+      resetClearFavoritesConfirmation();
 
       if (btnInfo.group === "all") {
-        if (appliedFilterGroup !== "all") {
-          appliedFilterGroup = null;
-          appliedSubCategory = null;
-        }
+        appliedFilterGroup = null;
+        appliedSubCategory = null;
         renderMainFilters();
         renderSubFilters();
+        renderFavoritesActions();
         renderSongs();
         syncHeaderHeight();
         return;
       }
 
+      if (btnInfo.group === "favorites") {
+        appliedFilterGroup = "favorites";
+        appliedSubCategory = null;
+        renderMainFilters();
+        renderSubFilters();
+        renderFavoritesActions();
+        renderSongs();
+        syncHeaderHeight();
+        return;
+      }
+
+      if (appliedFilterGroup === "favorites") {
+        appliedFilterGroup = null;
+      }
+
       renderMainFilters();
       renderSubFilters();
+      renderFavoritesActions();
+      renderSongs();
       syncHeaderHeight();
     });
 
@@ -186,6 +444,12 @@ function renderMainFilters() {
 
 function renderSubFilters() {
   subFiltersEl.innerHTML = "";
+
+  if (activeGroup === "favorites") {
+    subFiltersEl.style.display = "none";
+    return;
+  }
+
   subFiltersEl.style.display = "flex";
 
   let items = LANGUAGE_CATEGORIES;
@@ -205,6 +469,7 @@ function renderSubFilters() {
     }
 
     btn.addEventListener("click", () => {
+      resetClearFavoritesConfirmation();
       if (appliedFilterGroup === activeGroup && appliedSubCategory === categoryName) {
         appliedSubCategory = null;
         if (activeGroup === "all") {
@@ -215,6 +480,7 @@ function renderSubFilters() {
         appliedSubCategory = categoryName;
       }
       renderSubFilters();
+      renderFavoritesActions();
       renderSongs();
       syncHeaderHeight();
     });
@@ -223,8 +489,59 @@ function renderSubFilters() {
   });
 }
 
+function renderFavoritesActions() {
+  if (!favoritesActionsEl) return;
+  favoritesActionsEl.innerHTML = "";
+
+  if (appliedFilterGroup !== "favorites" || favoriteTitles.length === 0) {
+    resetClearFavoritesConfirmation();
+    favoritesActionsEl.style.display = "none";
+    return;
+  }
+
+  favoritesActionsEl.style.display = "flex";
+
+  const clearBtn = document.createElement("button");
+  clearBtn.type = "button";
+  clearBtn.className = confirmClearFavorites
+    ? "clear-favorites-btn is-confirming"
+    : "clear-favorites-btn";
+  clearBtn.textContent = confirmClearFavorites
+    ? "Tap again to clear all favorites"
+    : "Clear All Favorites";
+
+  clearBtn.addEventListener("click", () => {
+    if (!confirmClearFavorites) {
+      confirmClearFavorites = true;
+      if (confirmClearTimeoutId) {
+        clearTimeout(confirmClearTimeoutId);
+      }
+      confirmClearTimeoutId = setTimeout(() => {
+        confirmClearFavorites = false;
+        confirmClearTimeoutId = null;
+        renderFavoritesActions();
+        syncHeaderHeight();
+      }, 4000);
+      renderFavoritesActions();
+      syncHeaderHeight();
+      return;
+    }
+
+    clearAllFavorites();
+    renderFavoritesActions();
+    renderSongs();
+    syncHeaderHeight();
+  });
+
+  favoritesActionsEl.appendChild(clearBtn);
+}
+
 function matchesFilter(song) {
-  if (appliedFilterGroup === "all" && appliedSubCategory) {
+  if (appliedFilterGroup === "favorites") {
+    if (!isFavoriteSong(song.title)) {
+      return false;
+    }
+  } else if (appliedFilterGroup === "all" && appliedSubCategory) {
     const langs = Array.isArray(song.language)
       ? song.language
       : song.language
@@ -266,7 +583,11 @@ function renderSongs() {
   filtered.sort(compareSongTitlesNaturally);
 
   if (filtered.length === 0) {
-    songListEl.innerHTML = `<li class="song-card">No matching songs found.</li>`;
+    const emptyMessage =
+      appliedFilterGroup === "favorites" && searchQuery.trim() === ""
+        ? "No favorite songs yet. Open a song and tap ★ to save it to your lineup."
+        : "No matching songs found.";
+    songListEl.innerHTML = `<li class="song-card">${emptyMessage}</li>`;
     return;
   }
 
@@ -320,19 +641,33 @@ function showLibraryView() {
   songViewerEl.innerHTML = "";
   document.body.style.overflow = "hidden";
   libraryViewEl.style.display = "block";
+  renderFavoritesActions();
+  renderSongs();
   songListEl.scrollTop = 0;
   syncHeaderHeight();
 }
 
 function openSong(song) {
+  resetClearFavoritesConfirmation();
   libraryViewEl.style.display = "none";
   songViewerEl.style.display = "block";
   document.body.style.overflow = "auto";
   window.scrollTo({ top: 0, behavior: "instant" });
 
+  const initialFav = isFavoriteSong(song.title);
+
   songViewerEl.innerHTML = `
     <div class="song-page">
-      <button type="button" id="close-song-btn" class="return-btn">← Back to List</button>
+      <div class="song-page-top-bar">
+        <button type="button" id="close-song-btn" class="return-btn">← Back to List</button>
+        <button
+          type="button"
+          id="favorite-song-btn"
+          class="favorite-toggle-btn ${initialFav ? "is-favorite" : ""}"
+          aria-pressed="${initialFav ? "true" : "false"}"
+          aria-label="${initialFav ? "Remove from Favorites" : "Add to Favorites"}"
+        >${initialFav ? "★" : "☆"}</button>
+      </div>
       <h2 class="song-page-title">${escapeHtml(song.title)}</h2>
 
       <div class="song-tabs">
@@ -348,6 +683,20 @@ function openSong(song) {
   const lyricsBtn = document.getElementById("tab-lyrics-btn");
   const sheetBtn = document.getElementById("tab-sheet-btn");
   const closeBtn = document.getElementById("close-song-btn");
+  const favBtn = document.getElementById("favorite-song-btn");
+
+  const syncFavoriteButton = () => {
+    const favored = isFavoriteSong(song.title);
+    favBtn.textContent = favored ? "★" : "☆";
+    favBtn.classList.toggle("is-favorite", favored);
+    favBtn.setAttribute("aria-pressed", favored ? "true" : "false");
+    favBtn.setAttribute("aria-label", favored ? "Remove from Favorites" : "Add to Favorites");
+  };
+
+  favBtn.addEventListener("click", () => {
+    toggleFavoriteSong(song.title);
+    syncFavoriteButton();
+  });
 
   const showLyrics = () => {
     lyricsBtn.classList.add("active");
@@ -368,14 +717,27 @@ function openSong(song) {
   showLyrics();
 }
 
-searchInput.addEventListener("input", (e) => {
+searchInput?.addEventListener("input", (e) => {
   searchQuery = e.target.value;
+  updateClearSearchButton();
   renderSongs();
 });
 
+clearSearchBtnEl?.addEventListener("click", () => {
+  if (!searchInput) return;
+  searchInput.value = "";
+  searchQuery = "";
+  updateClearSearchButton();
+  renderSongs();
+  searchInput.focus();
+});
+
 // Initial render
+initPreferences();
 renderVersionBadge();
+updateClearSearchButton();
 renderMainFilters();
 renderSubFilters();
+renderFavoritesActions();
 renderSongs();
 syncHeaderHeight();

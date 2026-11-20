@@ -12,10 +12,24 @@
     <body>
         <header>
             <div class="title-row">
-                <img src="assets/choir-logo-2024.png" alt="Misericordia Choir Logo" class="app-logo" />
-                <h1>Misericordia</h1>
+                <div class="brand-group">
+                    <img src="assets/choir-logo-2024.png" alt="Misericordia Choir Logo" class="app-logo" />
+                    <h1>Misericordia</h1>
+                </div>
+
+                <button id="menu-btn" class="menu-btn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="side-drawer">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
             </div>
-            <input id="search-input" type="search" placeholder="Search title or category..." />
+
+            <div class="search-wrapper">
+                <input id="search-input" type="search" placeholder="Search song title..." autocomplete="off" />
+                <button id="clear-search-btn" class="clear-search-btn" type="button" aria-label="Clear search" hidden>&times;</button>
+            </div>
 
             <div id="main-filters"></div>
             <div id="sub-filters"></div>
@@ -24,6 +38,40 @@
         <main>
             <ul id="song-list"></ul>
         </main>
+
+        <!-- Backdrop & Right Side Panel -->
+        <div id="drawer-backdrop" class="drawer-backdrop" hidden></div>
+
+        <aside id="side-drawer" class="side-drawer" aria-label="Menu and settings" aria-hidden="true">
+            <div class="drawer-header">
+                <h2>Menu</h2>
+                <button id="close-drawer-btn" class="close-drawer-btn" type="button" aria-label="Close menu">&times;</button>
+            </div>
+
+            <div class="drawer-body">
+                <section class="drawer-section">
+                    <h3>Display</h3>
+                    <label class="drawer-option">
+                        <span>Dark Mode</span>
+                        <input id="dark-mode-toggle" type="checkbox" />
+                    </label>
+                    <label class="drawer-option">
+                        <span>Lyrics Font Size</span>
+                        <select id="font-size-select">
+                            <option value="normal">Normal</option>
+                            <option value="large">Large</option>
+                            <option value="xlarge">Extra Large</option>
+                        </select>
+                    </label>
+                </section>
+
+                <section class="drawer-section">
+                    <h3>Library &amp; App</h3>
+                    <button id="refresh-cache-btn" class="drawer-action-btn danger-action-btn" type="button">Force Refresh Cache</button>
+                    <p class="drawer-meta">Offline Choir Library • v0.3a</p>
+                </section>
+            </div>
+        </aside>
 
         <script src="songs.js"></script>
         <script src="app.js"></script>

@@ -40,7 +40,21 @@ const RAW_SONGS = [
   ["gloria-vil-8th", "Gloria – 8th Mass", ["Gloria"], [], ["Cebuano"], false],
   ["gloria-vil-10th", "Gloria – 10th Mass", ["Gloria"], [], ["Cebuano"], false],
   ["gloria-vil-11th", "Gloria – 11th Mass (Pastorela)", ["Gloria"], ["Christmas"], ["Cebuano"], false],
-  ["himaya-sa-dios-fern", "Himaya sa Dios (Fernandez)", ["Gloria"], [], ["Cebuano"], false]
+  ["himaya-sa-dios-fern", "Himaya sa Dios (Fernandez)", ["Gloria"], [], ["Cebuano"], false],
+  ["holy-duf-schutte", "Holy (Dufford & Schutte)", ["Sanctus"], [], ["English"], false],
+  ["holy-lfl", "Holy (Light from Light)", ["Sanctus"], [], ["English"], false],
+  ["holy-mcs", "Holy (MCS)", ["Sanctus"], [], ["English"], false],
+  ["sanctus-figuracion1", "Sanctus (Misa Figuracion 1)", ["Sanctus"], [], ["English"], false],
+  ["sanctus-figuracion2", "Sanctus (Misa Figuracion 2)", ["Sanctus"], [], ["Cebuano"], false],
+  ["sanctus-vil-2nd", "Sanctus – 2nd Mass", ["Sanctus"], [], ["Cebuano"], false],
+  ["sanctus-vil-3rd", "Sanctus – 3rd Mass", ["Sanctus"], [], ["Cebuano"], false],
+  ["sanctus-vil-4th", "Sanctus – 4th Mass", ["Sanctus"], [], ["Cebuano"], false],
+  ["sanctus-vil-5th", "Sanctus – 5th Mass", ["Sanctus"], [], ["Cebuano"], false],
+  ["sanctus-vil-7th", "Sanctus – 7th Mass (Requiem)", ["Sanctus"], [], ["Cebuano"], false],
+  ["sanctus-vil-8th", "Sanctus – 8th Mass", ["Sanctus"], [], ["Cebuano"], false],
+  ["sanctus-vil-9th", "Sanctus – 9th Mass", ["Sanctus"], [], ["Cebuano"], false],
+  ["sanctus-vil-10th", "Sanctus – 10th Mass", ["Sanctus"], [], ["Cebuano"], false],
+  ["sanctus-vil-11th", "Sanctus – 11th Mass (Pastorela)", ["Sanctus"], ["Christmas"], ["Cebuano"], false]
 ];
 
 globalThis.songs = RAW_SONGS.map(
